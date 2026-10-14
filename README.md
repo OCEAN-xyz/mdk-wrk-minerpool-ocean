@@ -1,6 +1,6 @@
-# miningos-wrk-minerpool-ocean
+# mdk-wrk-minerpool-ocean
 
-Ocean Mining Pool Worker - MiningOS worker implementation for integrating with Ocean.xyz mining pool API.
+Ocean Mining Pool Worker - mdk worker implementation for integrating with Ocean.xyz mining pool API.
 
 ## Table of Contents
 
@@ -35,8 +35,8 @@ This worker connects to the Ocean mining pool API to collect and monitor mining 
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/tetherto/miningos-wrk-minerpool-ocean.git
-cd miningos-wrk-minerpool-ocean
+git clone https://github.com/ocean-xyz/mdk-wrk-minerpool-ocean.git
+cd mdk-wrk-minerpool-ocean
 ```
 
 2. Install dependencies:
