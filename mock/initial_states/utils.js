@@ -3,6 +3,14 @@
 const BTC_SATS = 100000000
 const crypto = require('crypto')
 
+const DATUM_READY_STATES = [
+  'Block template error',
+  'Waiting for block template to be initialized',
+  'Ready',
+  'Not Ready',
+  'Non-Pooled Mode and Ready'
+]
+
 function generateMockBlocks (count = 10) {
   const blocks = []
   const now = Date.now()
@@ -105,7 +113,7 @@ function generateClientStats () {
     acceptedSharesDiff: acceptedShares * 2,
     rejectedShares,
     rejectedSharesDiff: rejectedShares * 2,
-    ready: Math.random() < 0.5,
+    ready: DATUM_READY_STATES[Math.floor(randomFloat() * DATUM_READY_STATES.length)],
     poolHost: 'datum-beta1.mine.ocean.xyz',
     poolTag: 'DATUM Gateway',
     MinerTag: 'DATUM User',
