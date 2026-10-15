@@ -8,7 +8,7 @@ const getWorkersStats = (data, username) => {
       username,
       id: name,
       name,
-      online: +worker.hashrate_60s === 0 ? 0 : 1,
+      online: +worker.hashrate_600s > 0 ? 1 : 0,
       last_updated: +data.snap_ts,
       hashrate: +worker.hashrate_60s,
       hashrate_1h: +worker.hashrate_3600s,
@@ -40,6 +40,13 @@ const convertMsToSeconds = (timestampMs) => {
   return Math.floor(timestampMs / 1000)
 }
 
+// Ocean returns BTC amounts as decimal strings; missing values stay null rather than NaN.
+const toNumberOrNull = (value) => {
+  if (value === undefined || value === null || value === '') return null
+  const n = Number(value)
+  return Number.isNaN(n) ? null : n
+}
+
 const getTimeRanges = (start, end, isHourly = true) => {
   if (start >= end) return []
 
@@ -67,5 +74,6 @@ module.exports = {
   getMonthlyDateRanges,
   isCurrentMonth,
   convertMsToSeconds,
-  getTimeRanges
+  getTimeRanges,
+  toNumberOrNull
 }

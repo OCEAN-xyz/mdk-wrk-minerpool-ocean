@@ -127,3 +127,21 @@ test('OceanMinerPoolApi: getEarnings should call correct endpoint', async (t) =>
   t.is(calledPath, `/v1/earnpay/${username}/${startTime}`)
   t.ok(result)
 })
+
+test('OceanMinerPoolApi: getStatsSnap should call correct endpoint', async (t) => {
+  const username = 'testuser'
+  let calledPath = null
+
+  const mockHttp = {
+    get: async (path) => {
+      calledPath = path
+      return { body: { result: { unpaid: '0.1', estimated_total_earn_next_block: '0.2' } } }
+    }
+  }
+
+  const api = new OceanMinerPoolApi(mockHttp)
+  const result = await api.getStatsSnap(username)
+
+  t.is(calledPath, `/v1/statsnap/${username}`)
+  t.is(result.unpaid, '0.1')
+})

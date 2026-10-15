@@ -9,12 +9,13 @@ Ocean Mining Pool Worker - mdk worker implementation for integrating with Ocean.
 3. [Installation](#installation)
 4. [Configuration](#configuration)
 5. [Starting the Worker](#starting-the-worker)
-6. [Architecture](#architecture)
-7. [API Endpoints Used](#api-endpoints-used)
-8. [Development](#development)
-9. [Monitoring](#monitoring)
-10. [Troubleshooting](#troubleshooting)
-11. [Contributing](#contributing)
+6. [Running under MDK](#running-under-mdk)
+7. [Architecture](#architecture)
+8. [API Endpoints Used](#api-endpoints-used)
+9. [Development](#development)
+10. [Monitoring](#monitoring)
+11. [Troubleshooting](#troubleshooting)
+12. [Contributing](#contributing)
 
 ## Overview
 
@@ -86,6 +87,62 @@ DEBUG="*" node worker.js --wtype wrk-minerpool-rack-ocean --env development --ra
 DEBUG="*" node mock/server.js
 ```
 
+## Running under MDK
+
+The worker can also be hosted on the [MDK](https://docs.mdk.tether.io/concepts/architecture/) `WorkerRuntime` (v1),
+so an MDK Kernel can discover it and pull its telemetry. The MiningOS worker class is unchanged and its MiningOS RPC
+server (`getWrkExtData`) keeps running next to the runtime, so existing orks are unaffected.
+
+### Install MDK
+
+`@tetherto/mdk` is not published to npm; it is a git dependency (pinned in `package.json`). npm does not install a
+git dependency's workspace packages, so after `npm install` run once:
+
+```bash
+npm run setup:mdk
+```
+
+MiningOS-only deployments (`worker.js`) never load MDK and can skip this step.
+
+### Start
+
+Uses the same `config/` files as `worker.js`:
+
+```bash
+# Join the Kernel's DHT discovery topic
+node mdk.js --env production --rack rack-1 --topic <kernel-topic-hex>
+
+# Or, on the Kernel's machine, publish the runtime key for local discovery
+node mdk.js --env production --rack rack-1 --keys-dir <kernel-root>/.worker-keys
+```
+
+`--worker-id` defaults to `wrk-minerpool-rack-ocean-<rack>`. With neither `--topic` nor `--keys-dir`, pass the printed
+runtime key to `kernel.registerWorker()`.
+
+| Option | Required | Description |
+| --- | --- | --- |
+| `workerId` | Yes | Runtime worker ID; also the ID of the single pool device |
+| `rack` | Yes | Same as `--rack` on `worker.js` |
+| `root` | No | Service root holding `config/` and `status/` (default: this package). Stores are created relative to the working directory, as with `worker.js` |
+| `env` | No | Config environment (default `production`) |
+| `kernelTopic` | No | Kernel DHT discovery topic (hex) |
+| `bootstrap` | No | DHT bootstrap override (tests) |
+| `WorkerRuntime` | No | Runtime class to use instead of the one from `@tetherto/mdk` |
+
+### Telemetry
+
+The pool is exposed as one device whose ID is the `workerId`.
+
+| Field | Unit | Description |
+| --- | --- | --- |
+| `hashrate` | H/s | Pool-side hashrate across accounts (60s window) |
+| `workers_online` | | Workers hashing (non-zero 600s hashrate) across accounts |
+| `balance` | BTC | Unpaid earnings across accounts |
+| `estimated_earnings` | BTC | Estimated earnings for the next pool block across accounts |
+
+Every `getWrkExtData` key (`stats`, `stats-history`, `workers`, `blocks`, `transactions`, `datum-stats`, `alerts`, ...)
+is available through the runtime's `ext_data` telemetry type, e.g. `client.pullTelemetry(workerId, { type: 'ext_data', key: 'stats' })`.
+
 ## Architecture
 
 ### Core Classes
@@ -150,6 +207,7 @@ The worker interacts with the following Ocean API endpoints:
 
 ### Running Tests
 ```bash
+npm run setup:mdk   # Once, for the MDK integration test
 npm run lint        # Check code style
 npm run lint:fix    # Fix code style issues
 npm run test    

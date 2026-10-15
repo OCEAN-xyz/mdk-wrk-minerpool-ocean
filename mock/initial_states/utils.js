@@ -50,10 +50,13 @@ function generateMockWorkers (username) {
     const workerName = `${username}.worker${i + 1}`
     workers[workerName] = [{
       hashrate_60s: 100000000000000 + randomNumber() * 10000000000000,
+      hashrate_600s: 100000000000000 + randomNumber() * 10000000000000,
       hashrate_3600s: 100000000000000 + randomNumber() * 10000000000000,
       hashrate_86400s: 100000000000000 + randomNumber() * 10000000000000
     }]
   }
+
+  workers[`${username}.idle`] = [{ hashrate_60s: 0, hashrate_600s: 0, hashrate_3600s: 0, hashrate_86400s: 0 }]
 
   return {
     snap_ts: Date.now() / 1000,
@@ -91,6 +94,22 @@ function generateUserHashrate (username) {
     hashrate_3600s: baseHashrate + randomNumber() * 10000000000000,
     hashrate_43200s: baseHashrate + randomNumber() * 10000000000000,
     hashrate_86400s: baseHashrate + randomNumber() * 10000000000000
+  }
+}
+
+function generateStatsSnap () {
+  const nextBlock = randomNumber(0.01, 0.1).toFixed(8)
+  return {
+    snap_type: 'user',
+    snap_ts: String(Math.floor(Date.now() / 1000)),
+    hashrate_60s: String(100000000000000),
+    hashrate_300s: String(100000000000000),
+    shares_in_tides: String(8724473053184),
+    estimated_earn_next_block: nextBlock,
+    estimated_bonus_earn_next_block: '0.00000000',
+    estimated_total_earn_next_block: nextBlock,
+    estimated_payout_next_block: nextBlock,
+    unpaid: randomNumber(0, 0.05).toFixed(8)
   }
 }
 
@@ -304,6 +323,7 @@ module.exports = {
   generateMockWorkers,
   generateMockTransactions,
   generateUserHashrate,
+  generateStatsSnap,
   randomNumber,
   generateClientStats,
   stratumServerInfo,

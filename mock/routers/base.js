@@ -1,6 +1,6 @@
 'use strict'
 
-const { generateUserHashrate, randomNumber } = require('../initial_states/utils')
+const { generateUserHashrate, generateStatsSnap, randomNumber } = require('../initial_states/utils')
 
 function checkError (req, res) {
   if (req.ctx.error) {
@@ -106,6 +106,16 @@ module.exports = function (fastify) {
 
       const { username } = req.params
       sendResult(res, generateUserHashrate(username))
+    } catch (e) {
+      res.code(500).send({ error: e.message })
+    }
+  })
+
+  fastify.get('/v1/statsnap/:username', (req, res) => {
+    try {
+      if (checkError(req, res)) return
+
+      sendResult(res, generateStatsSnap())
     } catch (e) {
       res.code(500).send({ error: e.message })
     }

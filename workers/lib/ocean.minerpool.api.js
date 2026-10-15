@@ -23,6 +23,10 @@ class OceanMinerPoolApi {
     return this._request(`/v1/user_hashrate/${username}`)
   }
 
+  async getStatsSnap (username) {
+    return this._request(`/v1/statsnap/${username}`)
+  }
+
   async getWorkers (username) {
     return this._request(`/v1/user_hashrate_full/${username}`)
   }

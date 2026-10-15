@@ -4,7 +4,7 @@ const async = require('async')
 const TetherWrkBase = require('@tetherto/tether-wrk-base/workers/base.wrk.tether')
 const OceanMinerPoolApi = require('./lib/ocean.minerpool.api')
 const DatumApi = require('./lib/datum.minerpool.api')
-const { getWorkersStats, getTimeRanges, convertMsToSeconds, isCurrentMonth, getMonthlyDateRanges } = require('./lib/utils')
+const { getWorkersStats, getTimeRanges, convertMsToSeconds, isCurrentMonth, getMonthlyDateRanges, toNumberOrNull } = require('./lib/utils')
 const { BTC_SATS, SCHEDULER_TIMES, POOL_TYPE, MINUTE_MS, HOUR_MS, HOURS_24_MS, DATUM_OFFLINE_ERROR, DATUM_STATUS } = require('./lib/constants')
 const { buildAlerts } = require('./lib/alerts')
 const utilsStore = require('@tetherto/hp-svc-facs-store/utils')
@@ -137,14 +137,16 @@ class WrkMinerPoolRackOcean extends TetherWrkBase {
       for (const username of this.accounts) {
         const earnings = await this.getEarnings(username)
         const hashRate = await this.fetchHashrate(username)
+        const snap = await this.oceanApi.getStatsSnap(username)
 
         stats.push({
           username,
           timestamp: Date.now(),
-          balance: earnings.revenue,
+          balance: toNumberOrNull(snap?.unpaid),
           unsettled: earnings.unsettled,
           revenue_24h: earnings.revenue,
           estimated_today_income: earnings.income,
+          estimated_earn_next_block: toNumberOrNull(snap?.estimated_total_earn_next_block),
           hashrate: +hashRate?.hashrate_60s,
           hashrate_1h: +hashRate?.hashrate_3600s,
           hashrate_24h: +hashRate?.hashrate_86400s,
@@ -368,7 +370,7 @@ class WrkMinerPoolRackOcean extends TetherWrkBase {
   async getEarnings (username) {
     let revenue = 0; let income = 0
     const time24HoursAgo = convertMsToSeconds(Date.now() - 24 * 60 * 60 * 1000)
-    const data = this.oceanApi.getEarnings(username, time24HoursAgo)
+    const data = await this.oceanApi.getEarnings(username, time24HoursAgo)
 
     data.earnings?.forEach(earning => {
       revenue += earning.satoshis_net_earned
@@ -380,7 +382,7 @@ class WrkMinerPoolRackOcean extends TetherWrkBase {
 
     return {
       revenue: revenue / BTC_SATS,
-      income,
+      income: income / BTC_SATS,
       unsettled: (revenue - income) / BTC_SATS
     }
   }

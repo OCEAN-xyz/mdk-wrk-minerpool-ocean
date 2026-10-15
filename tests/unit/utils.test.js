@@ -6,17 +6,20 @@ const {
   getMonthlyDateRanges,
   isCurrentMonth,
   convertMsToSeconds,
-  getTimeRanges
+  getTimeRanges,
+  toNumberOrNull
 } = require('../../workers/lib/utils')
 
 test('getWorkersStats: should transform worker data correctly', (t) => {
   const worker1Obj = {
     hashrate_60s: 1000,
+    hashrate_600s: 980,
     hashrate_3600s: 950,
     hashrate_86400s: 900
   }
   const worker2Obj = {
     hashrate_60s: 0,
+    hashrate_600s: 0,
     hashrate_3600s: 0,
     hashrate_86400s: 0
   }
@@ -46,6 +49,22 @@ test('getWorkersStats: should transform worker data correctly', (t) => {
 
   t.is(result[1].online, 0)
   t.is(result[1].hashrate, 0)
+})
+
+test('getWorkersStats: online follows the 600s window, not 60s', (t) => {
+  const data = {
+    workers: {
+      blip: [{ hashrate_60s: '0', hashrate_600s: '500', hashrate_3600s: '700', hashrate_86400s: '700' }],
+      stopped: [{ hashrate_60s: '0', hashrate_600s: '0', hashrate_3600s: '700', hashrate_86400s: '700' }],
+      noWindow: [{ hashrate_60s: '100', hashrate_3600s: '100', hashrate_86400s: '100' }]
+    },
+    snap_ts: 1
+  }
+
+  const [blip, stopped, noWindow] = getWorkersStats(data, 'u')
+  t.is(blip.online, 1, 'zero 60s but hashing over 10 min is online')
+  t.is(stopped.online, 0)
+  t.is(noWindow.online, 0, 'missing 600s window counts as offline')
 })
 
 test('getWorkersStats: should handle empty workers object', (t) => {
@@ -149,4 +168,14 @@ test('getTimeRanges: should default to hourly when isHourly not specified', (t) 
   const ranges = getTimeRanges(start, end)
 
   t.ok(ranges.length > 0)
+})
+
+test('toNumberOrNull: parses Ocean decimal strings, keeps missing values null', (t) => {
+  t.is(toNumberOrNull('0.02515912'), 0.02515912)
+  t.is(toNumberOrNull(3), 3)
+  t.is(toNumberOrNull('0.00000000'), 0)
+  t.is(toNumberOrNull(undefined), null)
+  t.is(toNumberOrNull(null), null)
+  t.is(toNumberOrNull(''), null)
+  t.is(toNumberOrNull('abc'), null)
 })

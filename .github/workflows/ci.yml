@@ -220,6 +220,9 @@ jobs:
           cache-key: ${{ needs.setup.outputs.cache-key }}
           node-version: ${{ env.NODE_VERSION }}
 
+      - name: Install MDK workspace dependencies
+        run: npm run setup:mdk
+
       - name: Test with coverage
         run: npm run test:coverage --if-present || npm test --if-present
 
