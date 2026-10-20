@@ -62,7 +62,7 @@ class PoolClient {
     this.alertsData = { ts: 0, alerts: [] }
     this.alertsPrev = {}
     this.alertStatus = { datum: null, ocean: null }
-    this.yearlyBalances = {}
+    this.balanceByMonth = {}
     this.history = {
       stats: [],
       workers: [],
@@ -304,7 +304,7 @@ class PoolClient {
 
   async yearlyBalances (username) {
     const ranges = getMonthlyDateRanges(12)
-    const balances = this.yearlyBalances[username] || {}
+    const balances = this.balanceByMonth[username] || {}
     for (const [month, { key }] of Object.entries(ranges)) {
       if (balances[month] != null && !isCurrentMonth(month)) continue
       try {
@@ -315,7 +315,7 @@ class PoolClient {
         balances[month] = 0
       }
     }
-    this.yearlyBalances[username] = balances
+    this.balanceByMonth[username] = balances
     return Object.entries(balances).map(([month, balance]) => ({ month, balance }))
   }
 
