@@ -1,7 +1,7 @@
 'use strict'
 
 const test = require('brittle')
-const DatumApi = require('../../workers/lib/datum.minerpool.api')
+const DatumApi = require('../../src/lib/datum.minerpool.api')
 
 test('DatumApi: should create instance with http client', (t) => {
   const mockHttp = {
@@ -135,13 +135,13 @@ test('DatumApi: _request should propagate http errors', async (t) => {
     t.fail('Should have thrown an error')
   } catch (err) {
     t.ok(err)
-    t.is(err.message, 'Network error')
+    t.is(err.message, 'ERR_DATUM_REQUEST_FAILED')
   }
 })
 
 test('DatumApi: authenticated _request uses DigestClient with baseUrl', async (t) => {
   const digestPath = require.resolve('digest-fetch')
-  const datumPath = require.resolve('../../workers/lib/datum.minerpool.api')
+  const datumPath = require.resolve('../../src/lib/datum.minerpool.api')
   const prevDigest = require.cache[digestPath]
 
   let fetchedUrl = null

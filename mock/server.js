@@ -2,12 +2,12 @@
 
 const fs = require('fs')
 const path = require('path')
-const yargs = require('yargs/yargs')
-const { hideBin } = require('yargs/helpers')
 const debug = require('debug')('mock')
 const fastify = require('fastify')
 
 if (require.main === module) {
+  const yargs = require('yargs/yargs')
+  const { hideBin } = require('yargs/helpers')
   const argv = yargs(hideBin(process.argv))
     .option('port', {
       alias: 'p',

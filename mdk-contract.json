@@ -1,0 +1,68 @@
+{
+  "metadata": {
+    "provider": "ocean",
+    "deviceFamily": "minerpool",
+    "brand": "Ocean",
+    "modelsSupported": ["OCEAN-BTC"],
+    "overview": "Reports Ocean.xyz mining pool account data (hashrate, workers, balances, revenue, history) and, when configured, the local DATUM gateway status. Read-only: pool and gateway state are polled over HTTP(S), no device writes."
+  },
+  "capabilities": {
+    "telemetry": [
+      { "name": "health", "unit": "", "type": "object", "handler": "src/telemetry/health.js", "description": "Operational status only: OK, DEGRADED, or OFFLINE, plus active alert names. Does not return device opts, env, or credentials." },
+      { "name": "hashrate", "unit": "H/s", "type": "number", "handler": "src/telemetry/hashrate.js", "description": "Total pool-side hashrate across configured accounts (60s window). 0 before the first refresh, or when Ocean reports the account inactive." },
+      { "name": "workers_online", "unit": "", "type": "number", "handler": "src/telemetry/workers-online.js", "description": "Workers with non-zero 600s hashrate across configured accounts. Idle workers are excluded. 0 before the first refresh." },
+      { "name": "balance", "unit": "BTC", "type": "number", "handler": "src/telemetry/balance.js", "description": "Unpaid earnings (Ocean statsnap unpaid) across configured accounts. 0 when the snapshot is missing." },
+      { "name": "estimated_earnings", "unit": "BTC", "type": "number", "handler": "src/telemetry/estimated-earnings.js", "description": "Estimated earnings if the pool finds the next block, summed across configured accounts." },
+      { "name": "stats", "unit": "", "type": "object", "handler": "src/telemetry/stats.js", "description": "Latest per-account stats snapshot: hashrate windows, balance, 24h revenue, unsettled, and estimated next-block earnings." },
+      { "name": "stats_history", "unit": "", "type": "array", "handler": "src/telemetry/stats-history.js", "description": "Saved stats snapshots. Requires start and end (ms). Optional interval is 5m, 30m, 3h, or 1D." },
+      { "name": "workers", "unit": "", "type": "object", "handler": "src/telemetry/workers.js", "description": "Latest worker list, or history when start and end are set. Optional offset, limit (max 100), and name." },
+      { "name": "workers_count", "unit": "", "type": "array", "handler": "src/telemetry/workers-count.js", "description": "Worker-count samples. Requires start and end (ms)." },
+      { "name": "transactions", "unit": "", "type": "array", "handler": "src/telemetry/transactions.js", "description": "Earnings rows. Requires start and end (ms). aggrHourly=true returns averaged hourly revenue instead of raw rows." },
+      { "name": "blocks", "unit": "", "type": "object", "handler": "src/telemetry/blocks.js", "description": "Pool blocks in a range. Requires start and end (ms). aggrMonthly=true returns monthly pool and site luck." },
+      { "name": "alerts", "unit": "", "type": "object", "handler": "src/telemetry/alerts.js", "description": "Currently active alerts. Ocean_pool_not_reachable and Datum_Offline." },
+      { "name": "alerts_history", "unit": "", "type": "array", "handler": "src/telemetry/alerts-history.js", "description": "Alert openings. Requires start and end (ms)." },
+      { "name": "yearly_balances", "unit": "BTC", "type": "array", "handler": "src/telemetry/yearly-balances.js", "description": "Last 12 months of net rewards per configured account, in BTC." },
+      { "name": "datum_stats", "unit": "", "type": "object", "handler": "src/telemetry/datum-stats.js", "description": "DATUM gateway status, connections, and estimated hashrate. status is null when datumApiUrl is not configured." },
+      { "name": "datum_client_stats", "unit": "", "type": "object", "handler": "src/telemetry/datum-client-stats.js", "description": "DATUM decentralized client stats. Fails with ERR_DATUM_NOT_CONFIGURED when no gateway is configured." },
+      { "name": "stratum_info", "unit": "", "type": "object", "handler": "src/telemetry/stratum-info.js", "description": "DATUM stratum server info." },
+      { "name": "stratum_job", "unit": "", "type": "object", "handler": "src/telemetry/stratum-job.js", "description": "DATUM current stratum job." },
+      { "name": "thread_stats", "unit": "", "type": "object", "handler": "src/telemetry/thread-stats.js", "description": "DATUM thread stats." },
+      { "name": "stratum_list", "unit": "", "type": "object", "handler": "src/telemetry/stratum-list.js", "description": "Authenticated DATUM stratum client list. Requires DATUM_USER and DATUM_PASSWORD in env." },
+      { "name": "coinbaser", "unit": "", "type": "object", "handler": "src/telemetry/coinbaser.js", "description": "DATUM coinbaser payload." },
+      { "name": "datum_config", "unit": "", "type": "object", "handler": "src/telemetry/datum-config.js", "description": "Authenticated DATUM configuration. Requires DATUM_USER and DATUM_PASSWORD in env. Secrets are not logged." }
+    ],
+    "commands": [],
+    "config": {
+      "schema": "ocean_pool_config_v1"
+    },
+    "health": {
+      "supportedStates": ["OK", "DEGRADED", "OFFLINE"],
+      "alerts": ["Ocean_pool_not_reachable", "Datum_Offline"],
+      "troubleshooting": [
+        "If Ocean_pool_not_reachable, verify device opts apiUrl and outbound HTTPS connectivity to the Ocean API.",
+        "If Datum_Offline, verify the DATUM gateway process is running and device opts datumApiUrl points at its API port.",
+        "If hashrate and workers_online stay 0 while transactions exist, the Ocean username is valid but has no active workers."
+      ]
+    },
+    "errors": {
+      "ERR_API_URL_REQUIRED": "Device opts are missing apiUrl.",
+      "ERR_ACCOUNTS_REQUIRED": "Device opts.accounts must be a non-empty list of Ocean usernames.",
+      "ERR_OCEAN_REQUEST_FAILED": "The Ocean HTTP call failed, timed out, or returned a non-2xx status.",
+      "ERR_OCEAN_API_ERROR": "Ocean returned an error payload, usually an unknown or inactive username.",
+      "ERR_DATUM_NOT_CONFIGURED": "A DATUM channel was pulled but datumApiUrl is not set.",
+      "ERR_DATUM_CREDENTIALS_MISSING": "An authenticated DATUM channel was pulled without DATUM_USER and DATUM_PASSWORD.",
+      "ERR_DATUM_REQUEST_FAILED": "The DATUM HTTP call failed, timed out, or returned a non-2xx status.",
+      "ERR_DATUM_CLIENT_STATS_FETCH": "DATUM decentralized client stats could not be read.",
+      "ERR_STRATUM_INFO_FETCH": "DATUM stratum server info could not be read.",
+      "ERR_STRATUM_JOB_FETCH": "DATUM current stratum job could not be read.",
+      "ERR_THREAD_STATS_FETCH": "DATUM thread stats could not be read.",
+      "ERR_STRATUM_LIST_FETCH": "DATUM stratum client list could not be read.",
+      "ERR_COINBASER_FETCH": "DATUM coinbaser payload could not be read.",
+      "ERR_CONFIGURATION_FETCH": "DATUM configuration could not be read.",
+      "ERR_START_INVALID": "A history channel was pulled without start.",
+      "ERR_END_INVALID": "A history channel was pulled without end.",
+      "ERR_RANGE_INVALID": "start or end is not a finite number.",
+      "ERR_INTERVAL_INVALID": "interval must be 5m, 30m, 3h, or 1D."
+    }
+  }
+}

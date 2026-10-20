@@ -1,63 +1,50 @@
 {
-  "name": "@tetherto/miningos-wrk-minerpool-ocean",
-  "version": "1.1.0",
-  "description": "Ocean mining pool worker",
+  "name": "@ocean-xyz/ocean-mdk-worker",
+  "version": "2.0.0",
+  "description": "MDK worker plugin for the Ocean.xyz mining pool. Loaded from this directory by WorkerRuntimeV2; it exports no module of its own.",
   "keywords": [
-    "tether"
+    "mdk",
+    "mdk-worker",
+    "ocean"
   ],
-  "author": "Tether",
+  "author": "Ocean",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tetherto/miningos-wrk-minerpool-ocean.git"
+    "url": "git+https://github.com/OCEAN-xyz/mdk-wrk-minerpool-ocean.git"
   },
-  "homepage": "https://github.com/tetherto/miningos-wrk-minerpool-ocean#readme",
+  "homepage": "https://github.com/OCEAN-xyz/mdk-wrk-minerpool-ocean#readme",
   "bugs": {
-    "url": "https://github.com/tetherto/miningos-wrk-minerpool-ocean/issues"
+    "url": "https://github.com/OCEAN-xyz/mdk-wrk-minerpool-ocean/issues"
   },
   "engines": {
     "node": ">=24"
   },
   "files": [
-    "worker.js",
-    "mdk.js",
-    "workers/",
-    "plugin/",
+    "mdk-contract.json",
+    "src/",
     "mock/"
   ],
-  "main": "worker.js",
-  "type": "commonjs",
-  "bin": {
-    "miningos-wrk-minerpool-ocean": "worker.js"
-  },
   "scripts": {
     "lint": "standard",
     "lint:fix": "standard --fix",
     "test": "npm run lint && npm run test:unit && npm run test:integration",
     "test:unit": "brittle tests/unit/*.js",
     "test:integration": "brittle tests/integration/*.js",
-    "test:coverage": "brittle --coverage tests/**/*.test.js",
-    "setup:mdk": "npm --prefix node_modules/@tetherto/mdk install -w backend/core/mdk-worker -w backend/core/kernel -w backend/core/client -w backend/core/mdk --omit=dev --no-audit --no-fund",
-    "dev": "node worker.js --wtype wrk-minerpool-rack-ocean --env development --rack rack-1",
-    "dev:mdk": "node mdk.js --env development --rack rack-1",
+    "validate": "node -e \"const fs=require('fs'); const c=require('./mdk-contract.json'); const names=new Set(); for (const e of c.capabilities.telemetry) { if (names.has(e.name)) throw new Error('duplicate '+e.name); names.add(e.name); if (!fs.existsSync(e.handler)) throw new Error('missing '+e.handler) } if (c.capabilities.telemetry.some(e => e.name==='health' && e.handler!=='src/telemetry/health.js')) throw new Error('health override missing'); console.log('contract ok', names.size)\"",
     "mock": "node mock/server.js"
   },
   "dependencies": {
-    "@bitfinex/bfx-facs-http": "^1.1.0",
-    "@bitfinex/bfx-facs-scheduler": "^1.0.0",
-    "@bitfinex/bfx-svc-boot-js": "1.3.1",
-    "@bitfinex/lib-js-util-base": "^2.1.0",
-    "@tetherto/mdk": "github:tetherto/mdk#v0.10.0",
-    "@tetherto/tether-wrk-base": "^2.0.1",
-    "debug": "4.3.4",
-    "digest-fetch": "3.1.1",
-    "mingo": "6.5.6"
+    "debug": "4.4.1",
+    "digest-fetch": "3.1.1"
   },
   "devDependencies": {
     "brittle": "3.16.3",
     "fastify": "5.12.1",
     "hyperdht": "6.34.0",
     "standard": "17.1.2",
-    "yargs": "17.7.2"
-  }
+    "yargs": "17.7.2",
+    "@tetherto/mdk": "github:tetherto/mdk#v0.10.0"
+  },
+  "type": "commonjs"
 }

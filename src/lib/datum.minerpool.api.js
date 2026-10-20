@@ -11,22 +11,22 @@ class DatumApi {
   }
 
   async _request (apiPath, auth = false) {
-    let resp
-    if (auth) {
-      if (!this.client) {
-        throw new Error('ERR_DATUM_CREDENTIALS_MISSING')
+    try {
+      if (auth) {
+        if (!this.client) throw new Error('ERR_DATUM_CREDENTIALS_MISSING')
+        const url = apiPath.includes('://') ? apiPath : `${this._http.baseUrl}/${apiPath.replace(/^\//, '')}`
+        const response = await this.client.fetch(url, { signal: AbortSignal.timeout(30 * 1000) })
+        if (!response.ok) throw new Error(`ERR_DATUM_REQUEST_FAILED: HTTP ${response.status}`)
+        return await response.json()
       }
-      const url = apiPath.includes('://') ? apiPath : `${this._http.baseUrl}/${apiPath.replace(/^\//, '')}`
-      const response = await this.client.fetch(url)
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-      resp = await response.json()
-    } else {
       const { body } = await this._http.get(apiPath, { encoding: 'json' })
-      resp = body
+      return body
+    } catch (e) {
+      if (String(e.message).startsWith('ERR_DATUM_')) throw e
+      const err = new Error('ERR_DATUM_REQUEST_FAILED')
+      err.cause = e
+      throw err
     }
-    return resp
   }
 
   async getDecentralizedClientStats () {
