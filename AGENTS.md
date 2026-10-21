@@ -64,15 +64,7 @@ History channels require `start` and `end` in milliseconds. Missing either one i
 
 ## Dashboard
 
-`examples/ui/index.html` is the Landfall-style page: dark rail, orange accent, tabs for overview, workers, earnings, blocks, alerts, and DATUM.
-
-Serve it only on the Tailscale address when the host should not be reachable on the LAN:
-
-```bash
-BIND_HOST=100.110.16.0 PORT=3001 OCEAN_UI=$PWD/examples/ui/index.html node host/ui-server.js
-```
-
-Open `http://100.110.16.0:3001`. The page reads `api.ocean.xyz` directly. DATUM tabs stay empty unless a gateway is configured on the worker. This page cannot reboot a miner or change its pool.
+The browser dashboard is not part of this package. It called `api.ocean.xyz` directly and did not use the worker. A UI that reads this worker belongs behind the MDK Gateway, in a separate change.
 
 ## Do not
 

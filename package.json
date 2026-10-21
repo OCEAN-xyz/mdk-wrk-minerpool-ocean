@@ -28,11 +28,12 @@
   "scripts": {
     "lint": "standard",
     "lint:fix": "standard --fix",
-    "test": "npm run lint && npm run test:unit && npm run test:integration",
+    "test": "npm run setup:mdk && npm run lint && npm run test:unit && npm run test:integration",
     "test:unit": "brittle tests/unit/*.js",
     "test:integration": "brittle tests/integration/*.js",
     "validate": "node -e \"const fs=require('fs'); const c=require('./mdk-contract.json'); const names=new Set(); for (const e of c.capabilities.telemetry) { if (names.has(e.name)) throw new Error('duplicate '+e.name); names.add(e.name); if (!fs.existsSync(e.handler)) throw new Error('missing '+e.handler) } if (c.capabilities.telemetry.some(e => e.name==='health' && e.handler!=='src/telemetry/health.js')) throw new Error('health override missing'); console.log('contract ok', names.size)\"",
-    "mock": "node mock/server.js"
+    "mock": "node mock/server.js",
+    "setup:mdk": "npm --prefix node_modules/@tetherto/mdk install -w backend/core/mdk-worker -w backend/core/kernel -w backend/core/client -w backend/core/mdk --omit=dev --no-audit --no-fund"
   },
   "dependencies": {
     "debug": "4.4.1",
