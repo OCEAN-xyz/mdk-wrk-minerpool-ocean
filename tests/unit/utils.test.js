@@ -8,7 +8,7 @@ const {
   convertMsToSeconds,
   getTimeRanges,
   toNumberOrNull
-} = require('../../workers/lib/utils')
+} = require('../../src/lib/utils')
 
 test('getWorkersStats: should transform worker data correctly', (t) => {
   const worker1Obj = {

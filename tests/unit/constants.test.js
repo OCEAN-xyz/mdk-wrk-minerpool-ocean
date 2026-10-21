@@ -9,7 +9,7 @@ const {
   POOL_TYPE,
   DATUM_STATUS,
   DATUM_OFFLINE_ERROR
-} = require('../../workers/lib/constants')
+} = require('../../src/lib/constants')
 
 test('constants: BTC_SATS should be correct', (t) => {
   t.is(BTC_SATS, 100000000)

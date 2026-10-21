@@ -10,13 +10,21 @@ class OceanMinerPoolApi {
   async _request (apiPath) {
     // waiting between calls due to api rate limits
     await sleep(1000)
+    let resp
     try {
-      const { body: resp } = await this._http.get(apiPath, { encoding: 'json' })
-      return resp.result
+      const res = await this._http.get(apiPath, { encoding: 'json' })
+      resp = res.body
     } catch (e) {
-      console.error('ERR_REQUEST_API', e)
+      const err = new Error('ERR_OCEAN_REQUEST_FAILED')
+      err.cause = e
+      throw err
     }
-    return {}
+    if (!resp || resp.error || resp.result === undefined) {
+      const err = new Error('ERR_OCEAN_API_ERROR')
+      err.detail = resp && resp.error
+      throw err
+    }
+    return resp.result
   }
 
   async getHashRateInfo (username) {

@@ -2,7 +2,7 @@
 
 const test = require('brittle')
 const { createServer } = require('../../mock/server')
-const DatumApi = require('../../workers/lib/datum.minerpool.api')
+const DatumApi = require('../../src/lib/datum.minerpool.api')
 const { setTimeout: sleep } = require('timers/promises')
 
 class MockHttpClient {
