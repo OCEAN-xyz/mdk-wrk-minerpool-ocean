@@ -14,20 +14,25 @@ The Kernel does not import this package. A host process constructs `WorkerRuntim
 
 ## Run the worker
 
-Node `>=24`. `@tetherto/mdk` is a dev dependency because `@tetherto/mdk-worker` is not on npm.
+Node `>=24`. The MDK packages (`@tetherto/mdk-worker`, `@tetherto/mdk-kernel`, `@tetherto/mdk-core`, `@tetherto/mdk-client`) are dev dependencies from npm: the host that runs this worker supplies its own.
 
 ```bash
 npm install
 npm test
 ```
 
-Host against the live pool:
+Host against the live pool, with a same-machine Kernel and local discovery. Start the Kernel first: the worker is
+fail-closed and only answers the keys in `allowedKeys` (`allowAll: true` is for local tests only).
 
 ```js
-const { WorkerRuntimeV2 } = require('@tetherto/mdk/backend/core/mdk-worker')
+const { getKernel } = require('@tetherto/mdk-core')
+const { WorkerRuntimeV2 } = require('@tetherto/mdk-worker')
+
+const kernel = await getKernel({ root: process.env.HOME + '/.mdk-ocean', discovery: { mode: 'local' } })
 
 const runtime = new WorkerRuntimeV2('/path/to/mdk-wrk-minerpool-ocean', {
   workerId: 'ocean-home',
+  allowedKeys: [kernel.getClientPublicKey()],
   devices: [{
     deviceId: 'ocean-home',
     config: {
@@ -38,15 +43,11 @@ const runtime = new WorkerRuntimeV2('/path/to/mdk-wrk-minerpool-ocean', {
   }]
 })
 await runtime.start()
-```
-
-Same-machine Kernel, local discovery:
-
-```js
-const { getKernel } = require('@tetherto/mdk/backend/core/mdk')
-const kernel = await getKernel({ root: process.env.HOME + '/.mdk-ocean', discovery: { mode: 'local' } })
 await kernel.registerWorker(runtime.getPublicKey())
 ```
+
+Callers of the Kernel need their DHT key in its `hrpc.whitelist` (or `kernel.allowKey()`) and an access token for a
+service account that `spec.rbac` allows.
 
 An inactive Ocean username does not crash the worker. Hashrate and worker count stay `0`. Monthly earnings still load.
 

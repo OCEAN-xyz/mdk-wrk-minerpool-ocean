@@ -7,7 +7,8 @@ const {
   isCurrentMonth,
   convertMsToSeconds,
   getTimeRanges,
-  toNumberOrNull
+  toNumberOrNull,
+  earnpayTsMs
 } = require('../../src/lib/utils')
 
 test('getWorkersStats: should transform worker data correctly', (t) => {
@@ -178,4 +179,17 @@ test('toNumberOrNull: parses Ocean decimal strings, keeps missing values null', 
   t.is(toNumberOrNull(null), null)
   t.is(toNumberOrNull(''), null)
   t.is(toNumberOrNull('abc'), null)
+})
+
+test('earnpayTsMs: reads Ocean ISO strings as UTC and mock epoch numbers', (t) => {
+  const ms = Date.UTC(2026, 10, 17, 12, 11, 31)
+  t.is(earnpayTsMs('2026-11-17T12:11:31'), ms, 'live Ocean format, no zone, is UTC')
+  t.is(earnpayTsMs('2026-11-17T12:11:31Z'), ms)
+  t.is(earnpayTsMs('2026-11-17T14:11:31+02:00'), ms)
+  t.is(earnpayTsMs(ms), ms, 'epoch ms from the mock')
+  t.is(earnpayTsMs(ms / 1000), ms, 'unix seconds')
+  t.is(earnpayTsMs(String(ms / 1000)), ms, 'unix seconds as a string')
+  t.ok(Number.isNaN(earnpayTsMs('not a date')))
+  t.ok(Number.isNaN(earnpayTsMs(undefined)))
+  t.ok(Number.isNaN(earnpayTsMs(null)))
 })

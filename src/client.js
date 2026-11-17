@@ -18,11 +18,12 @@ const {
   getMonthlyDateRanges,
   isCurrentMonth,
   convertMsToSeconds,
-  toNumberOrNull
+  toNumberOrNull,
+  earnpayTsMs
 } = require('./lib/utils')
 
 const REQUEST_TIMEOUT_MS = 30 * 1000
-const RATE_LIMIT_MS = 1000
+const DEFAULT_RATE_LIMIT_MS = 1000
 
 function httpClient (baseUrl) {
   return {
@@ -49,7 +50,8 @@ class PoolClient {
     this.apiUrl = opts.apiUrl
     this.accounts = accounts
     this.apiRetry = Number(opts.apiRetry) > 0 ? Number(opts.apiRetry) : 3
-    this.oceanApi = new OceanMinerPoolApi(httpClient(this.apiUrl))
+    this.rateLimitMs = Number(opts.apiRateLimitMs) >= 0 ? Number(opts.apiRateLimitMs) : DEFAULT_RATE_LIMIT_MS
+    this.oceanApi = new OceanMinerPoolApi(httpClient(this.apiUrl), { rateLimitMs: this.rateLimitMs })
     this.datumApi = opts.datumApiUrl
       ? new DatumApi(httpClient(opts.datumApiUrl), {
         user: env.DATUM_USER,
@@ -105,8 +107,62 @@ class PoolClient {
 
   enqueue (fn) {
     const run = this._chain.then(fn, fn)
-    this._chain = run.then(() => sleep(RATE_LIMIT_MS), () => sleep(RATE_LIMIT_MS))
+    this._chain = run.then(() => sleep(this.rateLimitMs), () => sleep(this.rateLimitMs))
     return run
+  }
+
+  // Earnings rows for a range, fetched from the pool in one call per account
+  // rather than served from the in-memory history, which only holds what has
+  // been recorded since the process started. Rows are grouped per local day,
+  // the shape _refreshHistory() records, so aggregateTransactions() and
+  // callers see the same rows either way.
+  transactions (params) {
+    requireRange(params)
+    const start = Number(params.start)
+    const end = Number(params.end)
+    return this.enqueue(async () => {
+      const byDay = new Map()
+      let failed = 0
+      let lastErr
+      for (const username of this.accounts) {
+        let earnings
+        try {
+          earnings = await this._earnpay(username, convertMsToSeconds(start), convertMsToSeconds(end))
+        } catch (err) {
+          // one unreachable account must not hide the others' rows
+          failed++
+          lastErr = err
+          logger('ERR_TRANSACTIONS %s %s', username, err.message)
+          continue
+        }
+        for (const row of earnings) {
+          const tsMs = earnpayTsMs(row.ts)
+          if (!Number.isFinite(tsMs)) {
+            logger('ERR_TRANSACTIONS_TS_INVALID %s %j', username, row.ts)
+            continue
+          }
+          const day = new Date(tsMs).setHours(0, 0, 0, 0)
+          if (!byDay.has(day)) byDay.set(day, { ts: day, transactions: [] })
+          byDay.get(day).transactions.push({ username, ...row })
+        }
+      }
+      // every account failed: an empty range would read as "no earnings"
+      if (this.accounts.length && failed === this.accounts.length) throw lastErr
+      return [...byDay.values()].sort((a, b) => a.ts - b.ts)
+    })
+  }
+
+  async _earnpay (username, start, end) {
+    let last
+    for (let attempt = 1; attempt <= this.apiRetry; attempt++) {
+      try {
+        const resp = await this.oceanApi.getTransactions(username, start, end)
+        return (resp && resp.earnings) || []
+      } catch (err) {
+        last = err
+      }
+    }
+    throw last
   }
 
   async refresh () {
