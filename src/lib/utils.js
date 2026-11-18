@@ -69,11 +69,25 @@ const getTimeRanges = (start, end, isHourly = true) => {
   return ranges
 }
 
+// earnpay `ts` to epoch ms. Ocean returns an ISO string with no zone
+// ("2026-11-17T12:11:31"), which is UTC; the mock returns epoch ms. Unix
+// seconds are accepted too. Anything else is NaN.
+function earnpayTsMs (ts) {
+  if (typeof ts === 'string' && !/^\d+(\.\d+)?$/.test(ts.trim())) {
+    const iso = ts.trim()
+    return Date.parse(/(Z|[+-]\d{2}:?\d{2})$/i.test(iso) ? iso : `${iso}Z`)
+  }
+  const n = Number(ts)
+  if (!Number.isFinite(n) || n <= 0) return NaN
+  return n > 1e12 ? n : n * 1000
+}
+
 module.exports = {
   getWorkersStats,
   getMonthlyDateRanges,
   isCurrentMonth,
   convertMsToSeconds,
   getTimeRanges,
-  toNumberOrNull
+  toNumberOrNull,
+  earnpayTsMs
 }

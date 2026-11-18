@@ -5,10 +5,12 @@ const fs = require('fs')
 const os = require('os')
 const path = require('path')
 const net = require('net')
+const DHT = require('hyperdht')
 const createTestnet = require('hyperdht/testnet')
-const { getKernel, waitForDiscovery, shutdown } = require('@tetherto/mdk/backend/core/mdk')
-const { createRawMdkClient } = require('@tetherto/mdk/backend/core/client')
-const { WorkerRuntimeV2 } = require('@tetherto/mdk/backend/core/mdk-worker')
+const { getKernel, waitForDiscovery, shutdown } = require('@tetherto/mdk-core')
+const { createRawMdkClient } = require('@tetherto/mdk-client')
+const { WorkerRuntimeV2 } = require('@tetherto/mdk-worker')
+const { grantTestAdmin } = require('@tetherto/mdk-kernel/testing')
 const { createServer } = require('../../mock/server')
 
 const WORKER_DIR = path.resolve(__dirname, '../..')
@@ -38,10 +40,14 @@ test('MDK: WorkerRuntimeV2 is READY and serves telemetry through the Kernel', { 
   await mock.app.ready()
   t.teardown(() => mock.stop())
 
+  // The Kernel admits callers by DHT key (an empty whitelist admits nobody),
+  // and authorizes every request by access token: pin the client's key and
+  // sign it in as a test service account bound to a full-access role.
+  const clientKeyPair = DHT.keyPair()
   const kernel = await getKernel({
     root: path.join(tmp, 'kernel'),
     keyFile: false,
-    hrpc: { whitelist: [], bootstrap },
+    hrpc: { whitelist: [clientKeyPair.publicKey.toString('hex')], bootstrap },
     discovery: { mode: 'local' }
   })
   t.teardown(() => shutdown(kernel))
@@ -50,6 +56,8 @@ test('MDK: WorkerRuntimeV2 is READY and serves telemetry through the Kernel', { 
     workerId: WORKER_ID,
     storeDir: path.join(tmp, 'worker'),
     bootstrap,
+    // the worker is fail-closed: it only answers the Kernel's dialing key
+    allowedKeys: [kernel.getClientPublicKey()],
     devices: [{
       deviceId: DEVICE_ID,
       config: {
@@ -68,7 +76,11 @@ test('MDK: WorkerRuntimeV2 is READY and serves telemetry through the Kernel', { 
   t.is(registered && registered.state, 'READY', 'Kernel accepted the worker')
   t.alike(registered && registered.deviceIds, [DEVICE_ID], 'pool device id is published')
 
-  const client = createRawMdkClient({ hrpc: { key: kernel.getPublicKey(), bootstrap } })
+  const credential = await grantTestAdmin(kernel)
+  const client = createRawMdkClient({
+    hrpc: { key: kernel.getPublicKey(), bootstrap, keyPair: clientKeyPair },
+    credential
+  })
   await client.connect({ warmup: true })
   t.teardown(() => client.close())
 

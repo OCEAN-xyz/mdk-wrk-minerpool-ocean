@@ -28,12 +28,11 @@
   "scripts": {
     "lint": "standard",
     "lint:fix": "standard --fix",
-    "test": "npm run setup:mdk && npm run lint && npm run test:unit && npm run test:integration",
+    "test": "npm run lint && npm run test:unit && npm run test:integration",
     "test:unit": "brittle tests/unit/*.js",
     "test:integration": "brittle tests/integration/*.js",
     "validate": "node -e \"const fs=require('fs'); const c=require('./mdk-contract.json'); const names=new Set(); for (const e of c.capabilities.telemetry) { if (names.has(e.name)) throw new Error('duplicate '+e.name); names.add(e.name); if (!fs.existsSync(e.handler)) throw new Error('missing '+e.handler) } if (c.capabilities.telemetry.some(e => e.name==='health' && e.handler!=='src/telemetry/health.js')) throw new Error('health override missing'); console.log('contract ok', names.size)\"",
-    "mock": "node mock/server.js",
-    "setup:mdk": "npm --prefix node_modules/@tetherto/mdk install -w backend/core/mdk-worker -w backend/core/kernel -w backend/core/client -w backend/core/mdk --omit=dev --no-audit --no-fund"
+    "mock": "node mock/server.js"
   },
   "dependencies": {
     "debug": "4.4.1",
@@ -41,11 +40,14 @@
   },
   "devDependencies": {
     "brittle": "3.16.3",
-    "fastify": "5.12.1",
+    "fastify": "5.12.8",
     "hyperdht": "6.34.0",
     "standard": "17.1.2",
     "yargs": "17.7.2",
-    "@tetherto/mdk": "github:tetherto/mdk#v0.10.0"
+    "@tetherto/mdk-kernel": "^0.13.1",
+    "@tetherto/mdk-worker": "^0.13.1",
+    "@tetherto/mdk-client": "^0.13.1",
+    "@tetherto/mdk-core": "^0.13.1"
   },
   "type": "commonjs"
 }

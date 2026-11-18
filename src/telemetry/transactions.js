@@ -1,11 +1,10 @@
 'use strict'
 
 const { getClient } = require('../client')
-const { inRange, aggregateTransactions } = require('../history')
+const { aggregateTransactions } = require('../history')
 
 module.exports = async (params = {}) => {
-  const client = getClient()
-  await client.ready
-  const rows = inRange(client.history.transactions, params)
+  // no `await client.ready`: transactions does not read the snapshot
+  const rows = await getClient().transactions(params)
   return params.aggrHourly ? aggregateTransactions(rows, params) : rows
 }

@@ -145,3 +145,33 @@ test('OceanMinerPoolApi: getStatsSnap should call correct endpoint', async (t) =
   t.is(calledPath, `/v1/statsnap/${username}`)
   t.is(result.unpaid, '0.1')
 })
+
+test('OceanMinerPoolApi: spaces calls by rateLimitMs instead of sleeping before every call', async (t) => {
+  const mockHttp = { get: async () => ({ body: { result: {} } }) }
+
+  const unlimited = new OceanMinerPoolApi(mockHttp, { rateLimitMs: 0 })
+  let started = Date.now()
+  await unlimited.getBlocks()
+  await unlimited.getBlocks()
+  t.ok(Date.now() - started < 200, 'rateLimitMs 0 adds no delay')
+
+  const spaced = new OceanMinerPoolApi(mockHttp, { rateLimitMs: 150 })
+  started = Date.now()
+  await spaced.getBlocks()
+  const first = Date.now() - started
+  await spaced.getBlocks()
+  const both = Date.now() - started
+  t.ok(first < 100, `first call goes out at once (${first}ms)`)
+  t.ok(both >= 150, `second call waits for the window (${both}ms)`)
+})
+
+test('OceanMinerPoolApi: concurrent callers each get their own rateLimitMs slot', async (t) => {
+  const sent = []
+  const mockHttp = { get: async () => { sent.push(Date.now()); return { body: { result: {} } } } }
+  const api = new OceanMinerPoolApi(mockHttp, { rateLimitMs: 100 })
+
+  await Promise.all([api.getBlocks(), api.getBlocks(), api.getBlocks()])
+  sent.sort((a, b) => a - b)
+  t.ok(sent[1] - sent[0] >= 95, `second call waits a window (${sent[1] - sent[0]}ms)`)
+  t.ok(sent[2] - sent[1] >= 95, `third call waits another window (${sent[2] - sent[1]}ms)`)
+})

@@ -2,6 +2,8 @@
 
 const { generateUserHashrate, generateStatsSnap, randomNumber } = require('../initial_states/utils')
 
+const EARNPAY_LEAD_MS = 3 * 60 * 60 * 1000
+
 function checkError (req, res) {
   if (req.ctx.error) {
     res.code(500).send({ error: 'Internal server error' })
@@ -11,16 +13,19 @@ function checkError (req, res) {
 }
 
 function generateEarnpayData (blocks, startTime, endTime) {
+  // generateMockBlocks() stamps blocks in ms, so compare in ms: scaling by
+  // 1000 pushed every block decades into the future and earnpay never
+  // returned a row for any real range.
   const earnings = blocks
-    .filter(block => {
-      const blockTime = block.ts * 1000 // Convert Unix timestamp to milliseconds
-      return blockTime >= startTime && blockTime <= endTime
-    })
+    .filter(block => block.ts >= startTime && block.ts <= endTime)
     .map(block => ({
       block_hash: block.block_hash,
       ts: block.ts,
       shares_in_window: Math.floor(block.accepted_shares * 0.001), // User's share
-      fees_collected_satoshis: Math.floor(block.total_reward_sats * 0.02), // 2% fee
+      // The 2% pool fee is charged on the user's 0.1% share of the block, not
+      // on the whole block: the fee row must stay far below the payout row.
+      // Ocean spells this field "colected" (sic); the mock matches the live API.
+      fees_colected_satoshis: Math.floor(block.total_reward_sats * 0.001 * 0.02),
       satoshis_net_earned: Math.floor(block.total_reward_sats * 0.98 * 0.001) // 98% after fee, user's portion
     }))
 
@@ -157,7 +162,10 @@ module.exports = function (fastify) {
       const startTime = isNaN(start) ? new Date(start).getTime() : parseInt(start) * 1000
       const endTime = isNaN(end) ? new Date(end).getTime() : parseInt(end) * 1000
 
-      const { earnings, payouts } = generateEarnpayData(req.state.blocks, startTime, endTime)
+      // Live Ocean returns rows from a few hours before the requested start
+      // (a 12:11 row for a 14:38 start), so the mock does too: the worker,
+      // not the pool, has to keep transactions inside the range.
+      const { earnings, payouts } = generateEarnpayData(req.state.blocks, startTime - EARNPAY_LEAD_MS, endTime)
       sendResult(res, { earnings, payouts })
     } catch (e) {
       res.code(500).send({ error: e.message })
