@@ -2,6 +2,8 @@
 
 const { generateUserHashrate, generateStatsSnap, randomNumber } = require('../initial_states/utils')
 
+const EARNPAY_LEAD_MS = 3 * 60 * 60 * 1000
+
 function checkError (req, res) {
   if (req.ctx.error) {
     res.code(500).send({ error: 'Internal server error' })
@@ -160,7 +162,10 @@ module.exports = function (fastify) {
       const startTime = isNaN(start) ? new Date(start).getTime() : parseInt(start) * 1000
       const endTime = isNaN(end) ? new Date(end).getTime() : parseInt(end) * 1000
 
-      const { earnings, payouts } = generateEarnpayData(req.state.blocks, startTime, endTime)
+      // Live Ocean returns rows from a few hours before the requested start
+      // (a 12:11 row for a 14:38 start), so the mock does too: the worker,
+      // not the pool, has to keep transactions inside the range.
+      const { earnings, payouts } = generateEarnpayData(req.state.blocks, startTime - EARNPAY_LEAD_MS, endTime)
       sendResult(res, { earnings, payouts })
     } catch (e) {
       res.code(500).send({ error: e.message })

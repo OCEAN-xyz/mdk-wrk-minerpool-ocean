@@ -113,6 +113,16 @@ test('WorkerRuntimeV2 serves ocean telemetry without credentials', async (t) => 
   }))
   t.ok(hourly.payload.value.hourlyRevenues.length >= 7 * 24)
 
+  // the pool pads earnpay with rows before start (the mock adds 3 h): over a
+  // 5 h range only the blocks at 0, 2 and 4 h ago belong, not the one at 6 h
+  const narrowStart = end - 5 * 60 * 60 * 1000
+  const narrow = await runtime.handleRequest(request(ACTIONS.TELEMETRY_PULL, 'pool-0', {
+    query: { type: 'transactions', start: narrowStart, end }
+  }))
+  const narrowTxs = narrow.payload.value.flatMap((row) => row.transactions)
+  t.is(narrowTxs.length, 3, 'rows the pool returns before start are dropped')
+  t.ok(narrowTxs.every((tx) => tx.ts >= narrowStart && tx.ts <= end), 'every transaction is inside the range')
+
   const noRange = await runtime.handleRequest(request(ACTIONS.TELEMETRY_PULL, 'pool-0', {
     query: { type: 'transactions' }
   }))

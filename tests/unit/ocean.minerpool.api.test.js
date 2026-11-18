@@ -164,3 +164,14 @@ test('OceanMinerPoolApi: spaces calls by rateLimitMs instead of sleeping before 
   t.ok(first < 100, `first call goes out at once (${first}ms)`)
   t.ok(both >= 150, `second call waits for the window (${both}ms)`)
 })
+
+test('OceanMinerPoolApi: concurrent callers each get their own rateLimitMs slot', async (t) => {
+  const sent = []
+  const mockHttp = { get: async () => { sent.push(Date.now()); return { body: { result: {} } } } }
+  const api = new OceanMinerPoolApi(mockHttp, { rateLimitMs: 100 })
+
+  await Promise.all([api.getBlocks(), api.getBlocks(), api.getBlocks()])
+  sent.sort((a, b) => a - b)
+  t.ok(sent[1] - sent[0] >= 95, `second call waits a window (${sent[1] - sent[0]}ms)`)
+  t.ok(sent[2] - sent[1] >= 95, `third call waits another window (${sent[2] - sent[1]}ms)`)
+})

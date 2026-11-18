@@ -8,17 +8,20 @@ class OceanMinerPoolApi {
   constructor (http, { rateLimitMs = DEFAULT_RATE_LIMIT_MS } = {}) {
     this._http = http
     this._rateLimitMs = Number(rateLimitMs) >= 0 ? Number(rateLimitMs) : DEFAULT_RATE_LIMIT_MS
-    this._lastCallAt = 0
+    this._nextAt = 0
   }
 
   // Ocean rate-limits its API: keep calls at least rateLimitMs apart, but
   // only wait for the remainder of that window, so a call that comes after a
   // quiet second (or the first call of a pull) goes out at once. 0 disables
-  // the spacing, for a mock.
+  // the spacing, for a mock. The slot is reserved before sleeping, so callers
+  // that arrive together (the refresh and a transactions pull) line up one
+  // window apart instead of all waking at the same moment.
   async _throttle () {
-    const wait = this._rateLimitMs - (Date.now() - this._lastCallAt)
-    if (wait > 0) await sleep(wait)
-    this._lastCallAt = Date.now()
+    const now = Date.now()
+    const at = Math.max(now, this._nextAt)
+    this._nextAt = at + this._rateLimitMs
+    if (at > now) await sleep(at - now)
   }
 
   async _request (apiPath) {

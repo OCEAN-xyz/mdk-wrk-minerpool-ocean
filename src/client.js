@@ -116,40 +116,46 @@ class PoolClient {
   // been recorded since the process started. Rows are grouped per local day,
   // the shape _refreshHistory() records, so aggregateTransactions() and
   // callers see the same rows either way.
-  transactions (params) {
+  //
+  // Not queued behind the refresh: a refresh takes ~10-12 s against live
+  // Ocean, longer than the Kernel's pull timeout. The api's _throttle already
+  // spaces these calls against the refresh's own.
+  async transactions (params) {
     requireRange(params)
     const start = Number(params.start)
     const end = Number(params.end)
-    return this.enqueue(async () => {
-      const byDay = new Map()
-      let failed = 0
-      let lastErr
-      for (const username of this.accounts) {
-        let earnings
-        try {
-          earnings = await this._earnpay(username, convertMsToSeconds(start), convertMsToSeconds(end))
-        } catch (err) {
-          // one unreachable account must not hide the others' rows
-          failed++
-          lastErr = err
-          logger('ERR_TRANSACTIONS %s %s', username, err.message)
+    const byDay = new Map()
+    let failed = 0
+    let lastErr
+    for (const username of this.accounts) {
+      let earnings
+      try {
+        earnings = await this._earnpay(username, convertMsToSeconds(start), convertMsToSeconds(end))
+      } catch (err) {
+        // one unreachable account must not hide the others' rows
+        failed++
+        lastErr = err
+        logger('ERR_TRANSACTIONS %s %s', username, err.message)
+        continue
+      }
+      for (const row of earnings) {
+        const tsMs = earnpayTsMs(row.ts)
+        if (!Number.isFinite(tsMs)) {
+          logger('ERR_TRANSACTIONS_TS_INVALID %s %j', username, row.ts)
           continue
         }
-        for (const row of earnings) {
-          const tsMs = earnpayTsMs(row.ts)
-          if (!Number.isFinite(tsMs)) {
-            logger('ERR_TRANSACTIONS_TS_INVALID %s %j', username, row.ts)
-            continue
-          }
-          const day = new Date(tsMs).setHours(0, 0, 0, 0)
-          if (!byDay.has(day)) byDay.set(day, { ts: day, transactions: [] })
-          byDay.get(day).transactions.push({ username, ...row })
-        }
+        // Ocean's earnpay can return rows from before the requested start
+        // (a 12:11 row for a 14:38 start was seen live). Drop them here so
+        // neither the rows nor aggrHourly count earnings outside the range.
+        if (tsMs < start || tsMs > end) continue
+        const day = new Date(tsMs).setHours(0, 0, 0, 0)
+        if (!byDay.has(day)) byDay.set(day, { ts: day, transactions: [] })
+        byDay.get(day).transactions.push({ username, ...row })
       }
-      // every account failed: an empty range would read as "no earnings"
-      if (this.accounts.length && failed === this.accounts.length) throw lastErr
-      return [...byDay.values()].sort((a, b) => a.ts - b.ts)
-    })
+    }
+    // every account failed: an empty range would read as "no earnings"
+    if (this.accounts.length && failed === this.accounts.length) throw lastErr
+    return [...byDay.values()].sort((a, b) => a.ts - b.ts)
   }
 
   async _earnpay (username, start, end) {
